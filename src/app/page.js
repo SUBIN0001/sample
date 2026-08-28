@@ -1,68 +1,57 @@
-import Image from "next/image";
+import { goodsReceipts, purchaseOrders, tolerances } from "./data/seed";
+import { evaluateReceipt } from "./lib/matchEngine";
+
+const currency = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 0,
+});
 
 export default function Home() {
+  const receipts = goodsReceipts.map((receipt) => {
+    const purchaseOrder = purchaseOrders.find((po) => po.id === receipt.poId);
+    return evaluateReceipt(purchaseOrder, receipt, tolerances.default);
+  });
+  const exceptions = receipts.filter((receipt) => receipt.status === "exception");
+  const matched = receipts.length - exceptions.length;
+  const totalValue = purchaseOrders.reduce(
+    (total, purchaseOrder) => total + purchaseOrder.orderedQty * purchaseOrder.unitPrice,
+    0,
+  );
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.js
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+    <div className="min-h-full bg-[#f4f1eb] text-[#17211b]">
+      <main className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 lg:py-12">
+        <header className="flex flex-col gap-5 border-b border-[#c8c9bd] pb-8 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-[#687568]">Operations / Receiving</p>
+            <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">Match control</h1>
+            <p className="mt-3 max-w-xl text-[#5f6b61]">Purchase order receipts evaluated against a {tolerances.default * 100}% quantity tolerance.</p>
+          </div>
+          <div className="border-l-2 border-[#e07852] pl-4 text-sm text-[#5f6b61]">
+            <p className="font-semibold text-[#17211b]">Today&apos;s queue</p>
+            <p>{exceptions.length} invoices need review</p>
+          </div>
+        </header>
+
+        <section className="grid gap-4 py-8 sm:grid-cols-3" aria-label="Receiving summary">
+          <div className="border border-[#d5d3c9] bg-[#fbfaf6] p-5"><p className="text-sm text-[#687568]">Receipts checked</p><p className="mt-2 text-3xl font-semibold">{receipts.length}</p></div>
+          <div className="border border-[#d5d3c9] bg-[#fbfaf6] p-5"><p className="text-sm text-[#687568]">Auto-matched</p><p className="mt-2 text-3xl font-semibold text-[#3d7657]">{matched}</p></div>
+          <div className="border border-[#d5d3c9] bg-[#fbfaf6] p-5"><p className="text-sm text-[#687568]">PO value</p><p className="mt-2 text-3xl font-semibold">{currency.format(totalValue)}</p></div>
+        </section>
+
+        <section className="overflow-hidden border border-[#d5d3c9] bg-[#fbfaf6]">
+          <div className="flex items-center justify-between border-b border-[#d5d3c9] px-5 py-4">
+            <h2 className="font-semibold">Receipt ledger</h2>
+            <span className="text-sm text-[#687568]">{receipts.length} records</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px] text-left text-sm">
+              <thead className="bg-[#e9e8de] text-xs uppercase tracking-wider text-[#687568]"><tr><th className="px-5 py-3 font-semibold">Receipt</th><th className="px-5 py-3 font-semibold">Supplier / material</th><th className="px-5 py-3 font-semibold">Ordered</th><th className="px-5 py-3 font-semibold">Received</th><th className="px-5 py-3 font-semibold">Variance</th><th className="px-5 py-3 font-semibold">Status</th></tr></thead>
+              <tbody className="divide-y divide-[#e1dfd5]">{receipts.map((receipt) => <tr key={receipt.id} className="hover:bg-[#f3f1e9]"><td className="px-5 py-4 font-semibold">{receipt.id}<span className="mt-1 block text-xs font-normal text-[#687568]">{receipt.date}</span></td><td className="px-5 py-4">{receipt.poDetails.supplier}<span className="mt-1 block text-xs text-[#687568]">{receipt.poDetails.material}</span></td><td className="px-5 py-4">{receipt.poDetails.orderedQty.toLocaleString()}</td><td className="px-5 py-4">{receipt.receivedQty.toLocaleString()}</td><td className={`px-5 py-4 font-semibold ${receipt.variancePct === 0 ? "text-[#3d7657]" : receipt.status === "exception" ? "text-[#c95535]" : "text-[#3d7657]"}`}>{receipt.variancePct > 0 ? "+" : ""}{receipt.variancePct}%</td><td className="px-5 py-4"><span className={`inline-flex px-2.5 py-1 text-xs font-bold uppercase tracking-wide ${receipt.status === "exception" ? "bg-[#f8ddd2] text-[#a63f28]" : "bg-[#dcebdc] text-[#326347]"}`}>{receipt.status}</span></td></tr>)}</tbody>
+            </table>
+          </div>
+        </section>
       </main>
     </div>
   );
